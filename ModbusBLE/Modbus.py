@@ -51,7 +51,7 @@ async def Scan():
 
 def getData(sender: int, data: bytearray):
     #입력받은데이터를 헥사로 변환하여 출력 sender는 서비스uuid 출력시 나오는 handle의 수 크게 의미 없음
-    # print('sender: ', sender, 'data: ', data.hex())
+    print('sender: ', sender, 'data: ', data.hex())
     print('RequestData : ', data[2:len(data)-2],'\n')
     datalen=data[2]
     gasdata=data[3:len(data)-2]
