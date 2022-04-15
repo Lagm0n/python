@@ -1,5 +1,6 @@
 import asyncio
-import json
+import struct
+from GasData import Gas
 from bleak import BleakClient
 from bleak import BleakScanner
 from crccheck.crc import Crc16Modbus
@@ -48,50 +49,118 @@ async def Scan():
     #선택한 블루투스의 데이터 값(주소,write_uuid,notify_uuid) 반환
     return bluetoothData
 
-
-def getData(sender: int, data: bytearray):
+# 일반 파라미터 요청함수(가스 갯수)
+def getSystemParameters(sender: int,data: bytearray):
+    global gasCount
     #입력받은데이터를 헥사로 변환하여 출력 sender는 서비스uuid 출력시 나오는 handle의 수 크게 의미 없음
-    print('sender: ', sender, 'data: ', data.hex())
-    print('RequestData : ', data[2:len(data)-2],'\n')
+    # print('sender : ', sender, 'data: ', data.hex())
+    # print('RequestData : ', data[2:len(data)-2],'\n')
     datalen=data[2]
     gasdata=data[3:len(data)-2]
-    print('number of data requested : ',datalen)
-    print('number of actual data : ',len(gasdata),'\n')
-    if datalen==len(gasdata):
-        print('When the number of requested data and the number of actual data are the same')
-    else:
-        print('The number of requested data and the number of actual data are different')
+    # print('data requested : actual data >> ', datalen, ' : ', len(gasdata), '\n')
+    if datalen!=len(gasdata):
+        print('The number of requested data and the number of actual data are different\n')
+    gasCount=gasdata[1]
+    print("gasCount : ",gasCount)
 
+# 고정 파라미터 요청함수(가스 종류,단위 등등)
+def getFixParameters(sender: int, data: bytearray):
+    global gasType
+    global unitType
+    fixParam=Gas()
+    datalen=data[2]
+    gasdata=data[3:len(data)-2]
+    # print('data requested : actual data >> ', datalen, ' : ', len(gasdata), '\n')
+    if datalen != len(gasdata):
+        print('The number of requested data and the number of actual data are different\n')
+    gasType=fixParam.getGas(gasdata[1])
+    unitType=fixParam.getUnit(gasdata[3])
+    print('gasType\t:\t',gasType.formula)
+    print('unitType:\t',unitType.name)
+    print('\n')
+
+
+# 실시간 파라미터 요청 함수()
+def getGasData(sendr:int, data:bytearray):
+    global gasValue
+
+    datalen=data[2]
+    gasdata=data[3:len(data)-2]
+    lVal=gasdata[0:2]
+    hval=gasdata[2:4]
+    
+    changeLocation=hval+lVal
+    print('gasdata : ',gasdata)
+    print('changeLocation : ',changeLocation)
+
+    # valuedata=bytes.fromhex(changeLocation)
+    
+    # print('data requested : actual data >> ', datalen, ' : ', len(gasdata), '\n')
+    if datalen!=len(gasdata):
+        print('The number of requested data and the number of actual data are different\n')
+    gasValue=round(struct.unpack(">f",changeLocation)[0],3)
+    print(gasValue)
+
+def getGasInformation(gasCount : int, gasSet:dict, gasValue: float):
+    ...
 
 #데이터 요청 함수
-async def dataRequest(bluetoothData: dict, data:str):
+async def dataRequest(bluetoothData: dict, data:str,num=0):
     #입력받은 주소로 연결 및 client로 변수처리
     async with BleakClient(bluetoothData['address']) as client:
-        print('connected')
+        global gasCount
+        global gasType
+        global unitType
+        global gasValue
+        # print('connected\n')
         #연결된 블루투스의 서비스리스트 
         services = await client.get_services()
         #서비스리스트의 내부를 루프돌면서 캐릭터리스트를 찾는다
-        for service in services:
-            #캐릭터리스트의 내부를 루프 돌면서 속성에 맞는 작업 진행
-            for characteristic in service.characteristics:
-                #캐릭터리스트의 내부 uuid가 bluetoothData의 write uuid와 동일하면 데이터 요청
-                if characteristic.uuid == bluetoothData['write']:                       
-                    if 'write' in characteristic.properties:
-                        print('Requesting data...')
-                        sendData = setData(data)
-                        print('sendData : ',end='')
-                        print(sendData)
-                        await client.write_gatt_char(characteristic, sendData) 
-                #캐릭터리스트의 내부 uuid가 bluetoothData의 notify uuid와 동일하면 데이터 읽기
-                if characteristic.uuid == bluetoothData['notify']:
-                    if 'notify' in characteristic.properties:
-                        print('try to activate notify.')
-                        #데이터 요청 후 읽어들이는 notify 함수 시작
-                        await client.start_notify(characteristic.uuid, getData)
-                        await asyncio.sleep(5.0)
-                        #데이터 요청 후 읽어들이는 notify 함수 종료
-                        await client.stop_notify(characteristic.uuid)
-    print('disconnect')
+        while client.is_connected:
+            for service in services:
+                #캐릭터리스트의 내부를 루프 돌면서 속성에 맞는 작업 진행
+                for characteristic in service.characteristics:
+                    #캐릭터리스트의 내부 uuid가 bluetoothData의 write uuid와 동일하면 데이터 요청
+                    if characteristic.uuid == bluetoothData['write']:                       
+                        if 'write' in characteristic.properties:
+                            # print('Requesting data...')
+                            if num == 0:
+                                sendData = setData('05 03 00 20 00 16')
+                            elif num == 1:
+                                sendData = setData(data)
+                            elif num == 2:
+                                sendData = setData(data)
+                            await client.write_gatt_char(characteristic, sendData) 
+                    #캐릭터리스트의 내부 uuid가 bluetoothData의 notify uuid와 동일하면 데이터 읽기
+                    if characteristic.uuid == bluetoothData['notify']:
+                        if 'notify' in characteristic.properties:
+                            # print('try to activate notify.')
+                            #데이터 요청 후 읽어들이는 notify 함수 시작
+                            if num == 0:
+                                await client.start_notify(characteristic.uuid, getSystemParameters)
+                            elif num == 1:
+                                await client.start_notify(characteristic.uuid, getFixParameters)
+                            elif num == 2:
+                                await client.start_notify(characteristic.uuid, getGasData)
+                            await asyncio.sleep(1.0)
+                            #데이터 요청 후 읽어들이는 notify 함수 종료
+                            await client.stop_notify(characteristic.uuid)
+            # print('gasType\t:\t',gasType.formula)
+            # print('unitType:\t',unitType.name)
+            if num ==0:
+                return gasCount
+            elif num ==1:
+                gasData=dict()
+                gasData['Gas']=gasType
+                gasData['Unit']=unitType
+                return gasData
+            elif num ==2:
+                return gasValue
+            else:
+                print("Num ERROR")
+            # count+=1 if count == 0 or count == 1 else count
+            # print('...', gasCount)
+            client.disconnect()
 
 #입력받은 데이터 가공하는 함수
 def setData(inputData:str):
@@ -100,13 +169,27 @@ def setData(inputData:str):
     crc = bytes.fromhex(crcData)
     return data + crc
 
-# 05 03 01 10 00 2A c5 ec
-# 05 03 02 50 00 05 85 E4
 
-# #블루투스 스캔 함수 실행
-loopScan = asyncio.get_event_loop()
-bleData=loopScan.run_until_complete(Scan())
+def main():
+    gCount=0
+    
+    # #블루투스 스캔 함수 실행
+    loop = asyncio.get_event_loop()
+    bleData=loop.run_until_complete(Scan())
+    print("===========================일반 파라미터 요청===========================")
+    loop = asyncio.get_event_loop()
+    gCount=loop.run_until_complete(dataRequest(bleData,'05 03 00 20 00 16'))
+    print("===========================고정 파라미터 요청===========================")
+    gasSetList=list()
+    loop = asyncio.get_event_loop()
+    for i in range(1,gCount+1):
+        gasSetList.append(loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 10 00 2A'.format(i),1)))
+    # print(gasSetList)
+    print("===========================실시간 파라미터 요청===========================")
+    loop = asyncio.get_event_loop()
+    for i in range(1,gCount):
+        loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(i),2))
 
-# #데이터 요청 함수 실행
-loopDR = asyncio.get_event_loop()
-loopDR.run_until_complete(dataRequest(bleData,'05 03 01 10 00 2A'))
+
+if __name__=='__main__':
+    main()
