@@ -4,6 +4,9 @@ from GasData import Gas
 from bleak import BleakClient
 from bleak import BleakScanner
 from crccheck.crc import Crc16Modbus
+import requests
+import json
+
 #블루투스 장비 스캔 함수
 async def Scan():
     #딕셔너리 생성
@@ -219,7 +222,16 @@ def main():
                 value=loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(idx),2))
                 print('{0}. {1} : {2} {3}'.format(idx,item['Gas'].name,value,item['Unit'].name))
         elif selectNumber ==4:
-            ...
+            url='http://html.cielpia.com/rskorea/api/test2.php'
+            jsonList=list()
+            for idx,item in enumerate(gasSetList,1):
+                value=loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(idx),2))
+                jsonstr={'gas': '{0}'.format(item['Gas'].name), 'figure':'{0}'.format(value), 'unit':'{0}'.format(item['Unit'].name)}
+                jsonList.append(jsonstr)
+            jsonstr=json.dumps(jsonList)
+            sendData = {"gastiger":jsonstr}
+            resp = requests.post(url=url, data=sendData)
+            print(resp.text)
         elif selectNumber ==9:
             break
         print('\n')
