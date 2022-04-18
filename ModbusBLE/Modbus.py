@@ -61,7 +61,7 @@ def getSystemParameters(sender: int,data: bytearray):
     if datalen!=len(gasdata):
         print('The number of requested data and the number of actual data are different\n')
     gasCount=gasdata[1]
-    print("gasCount : ",gasCount)
+    # print("gasCount : ",gasCount)
 
 # 고정 파라미터 요청함수(가스 종류,단위 등등)
 def getFixParameters(sender: int, data: bytearray):
@@ -75,9 +75,9 @@ def getFixParameters(sender: int, data: bytearray):
         print('The number of requested data and the number of actual data are different\n')
     gasType=fixParam.getGas(gasdata[1])
     unitType=fixParam.getUnit(gasdata[3])
-    print('gasType\t:\t',gasType.formula)
-    print('unitType:\t',unitType.name)
-    print('\n')
+    # print('gasType\t:\t',gasType.formula)
+    # print('unitType:\t',unitType.name)
+    # print('\n')
 
 
 # 실시간 파라미터 요청 함수()
@@ -90,8 +90,8 @@ def getGasData(sendr:int, data:bytearray):
     hval=gasdata[2:4]
     
     changeLocation=hval+lVal
-    print('gasdata : ',gasdata)
-    print('changeLocation : ',changeLocation)
+    # print('gasdata : ',gasdata)
+    # print('changeLocation : ',changeLocation)
 
     # valuedata=bytes.fromhex(changeLocation)
     
@@ -99,7 +99,7 @@ def getGasData(sendr:int, data:bytearray):
     if datalen!=len(gasdata):
         print('The number of requested data and the number of actual data are different\n')
     gasValue=round(struct.unpack(">f",changeLocation)[0],3)
-    print(gasValue)
+    # print(gasValue)
 
 def getGasInformation(gasCount : int, gasSet:dict, gasValue: float):
     ...
@@ -170,26 +170,64 @@ def setData(inputData:str):
     return data + crc
 
 
-def main():
-    gCount=0
+# def main():
+#     gCount=0
     
-    # #블루투스 스캔 함수 실행
-    loop = asyncio.get_event_loop()
-    bleData=loop.run_until_complete(Scan())
-    print("===========================일반 파라미터 요청===========================")
-    loop = asyncio.get_event_loop()
-    gCount=loop.run_until_complete(dataRequest(bleData,'05 03 00 20 00 16'))
-    print("===========================고정 파라미터 요청===========================")
+#     # #블루투스 스캔 함수 실행
+#     loop = asyncio.get_event_loop()
+#     bleData=loop.run_until_complete(Scan())
+#     print("===========================일반 파라미터 요청===========================")
+#     loop = asyncio.get_event_loop()
+#     gCount=loop.run_until_complete(dataRequest(bleData,'05 03 00 20 00 16'))
+#     print("===========================고정 파라미터 요청===========================")
+#     gasSetList=list()
+#     loop = asyncio.get_event_loop()
+#     for i in range(1,gCount+1):
+#         gasSetList.append(loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 10 00 2A'.format(i),1)))
+#     # print(gasSetList)
+#     print("===========================실시간 파라미터 요청===========================")
+#     loop = asyncio.get_event_loop()
+#     for i in range(1,gCount):
+#         loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(i),2))
+
+
+def main():
     gasSetList=list()
     loop = asyncio.get_event_loop()
+    bleData=loop.run_until_complete(Scan())
+    gCount =loop.run_until_complete(dataRequest(bleData,'05 03 00 20 00 16'))
     for i in range(1,gCount+1):
         gasSetList.append(loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 10 00 2A'.format(i),1)))
-    # print(gasSetList)
-    print("===========================실시간 파라미터 요청===========================")
-    loop = asyncio.get_event_loop()
-    for i in range(1,gCount):
-        loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(i),2))
+    while True:
+        print('명령어 목록 ')
+        print('1. 디바이스 가스 수 ')
+        print('2. 가스명 - 단위 목록')
+        print('3. 실시간 데이터 불러오기')
+        print('4. 데이터 전송 ')
+        print('9. 프로그램 종료')
+        selectNumber=int(input("실행할 명령어를 선택해 주세요. : "))
+        if (5 < selectNumber and selectNumber < 9)or (selectNumber < 1 and 9 < selectNumber):
+            selectNumber=int(input("실행할 명령어를 선택해 주세요. : "))
+            print('\n')
+        if selectNumber == 1:
+            print('가스 수: {0}개'.format(gCount))
+        elif selectNumber ==2:
+            for idx,item in enumerate(gasSetList,1):
+                print('{0}. {1} - {2}'.format(idx,item['Gas'].name,item['Unit'].name))
+        elif selectNumber ==3:
+            for idx,item in enumerate(gasSetList,1):
+                value=loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(idx),2))
+                print('{0}. {1} : {2} {3}'.format(idx,item['Gas'].name,value,item['Unit'].name))
+        elif selectNumber ==4:
+            ...
+        elif selectNumber ==9:
+            break
+        print('\n')
+
 
 
 if __name__=='__main__':
-    main()
+    try:
+        main()
+    except:
+        main()
