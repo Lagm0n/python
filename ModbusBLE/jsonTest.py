@@ -1,7 +1,7 @@
 import requests
 import json
 jlist=list()
-url='http://html.cielpia.com/rskorea/api/test2.php'
+url='https://html.cielpia.com/rskorea/api/test2.php'
 # jsonstr={'gas': 'CO2', 'figure': '21.00','unit':'ppm'}, {'gas': 'CO', 'figure': '21.00','unit':'ppb'}# dict 타입
 for i in range(5):
     jsonstr={'gas': '{0}'.format(i+1), 'figure':'{0}'.format(i+9), 'unit':'{0}'.format(i)}

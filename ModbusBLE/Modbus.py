@@ -93,8 +93,8 @@ def getGasData(sendr:int, data:bytearray):
     hval=gasdata[2:4]
     
     changeLocation=hval+lVal
-    # print('gasdata : ',gasdata)
-    # print('changeLocation : ',changeLocation)
+    print('data : ',data.hex())
+    print('changeLocation : ',changeLocation)
 
     # valuedata=bytes.fromhex(changeLocation)
     
@@ -102,7 +102,7 @@ def getGasData(sendr:int, data:bytearray):
     if datalen!=len(gasdata):
         print('The number of requested data and the number of actual data are different\n')
     gasValue=round(struct.unpack(">f",changeLocation)[0],3)
-    # print(gasValue)
+    print(gasValue)
 
 def getGasInformation(gasCount : int, gasSet:dict, gasValue: float):
     ...
@@ -133,6 +133,9 @@ async def dataRequest(bluetoothData: dict, data:str,num=0):
                                 sendData = setData(data)
                             elif num == 2:
                                 sendData = setData(data)
+                            print('sendData :' + sendData.hex())
+                            print('sendData :',sendData)
+
                             await client.write_gatt_char(characteristic, sendData) 
                     #캐릭터리스트의 내부 uuid가 bluetoothData의 notify uuid와 동일하면 데이터 읽기
                     if characteristic.uuid == bluetoothData['notify']:
@@ -202,13 +205,14 @@ def main():
     for i in range(1,gCount+1):
         gasSetList.append(loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 10 00 2A'.format(i),1)))
     while True:
-        print('명령어 목록 ')
+        print('명령어 목록 \n')
         print('1. 디바이스 가스 수 ')
         print('2. 가스명 - 단위 목록')
         print('3. 실시간 데이터 불러오기')
         print('4. 데이터 전송 ')
-        print('9. 프로그램 종료')
+        print('9. 프로그램 종료\n')
         selectNumber=int(input("실행할 명령어를 선택해 주세요. : "))
+        print('\n')
         if (5 < selectNumber and selectNumber < 9)or (selectNumber < 1 and 9 < selectNumber):
             selectNumber=int(input("실행할 명령어를 선택해 주세요. : "))
             print('\n')
@@ -222,7 +226,7 @@ def main():
                 value=loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(idx),2))
                 print('{0}. {1} : {2} {3}'.format(idx,item['Gas'].name,value,item['Unit'].name))
         elif selectNumber ==4:
-            url='http://html.cielpia.com/rskorea/api/test2.php'
+            url='https://html.cielpia.com/rskorea/api/test2.php'
             jsonList=list()
             for idx,item in enumerate(gasSetList,1):
                 value=loop.run_until_complete(dataRequest(bleData,'05 03 0{0} 52 00 03'.format(idx),2))
@@ -239,7 +243,6 @@ def main():
 
 
 if __name__=='__main__':
-    try:
-        main()
-    except:
-        main()
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    asyncio.new_event_loop()
+    main()

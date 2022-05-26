@@ -34,3 +34,9 @@ async def dataRequest(address, write, notify):
 loop = asyncio.get_event_loop()
 loop.run_until_complete(dataRequest(address, write_uuid, notify_uuid))
 print('done')
+
+
+
+
+
+# [0x05, 0x03, 0x00, 0x20, 0x00, 0x16, 0xC4,0x4A
